@@ -3,12 +3,12 @@
 
 __author__ = "Sven Nivera"
 __contact__ = "sven.nivera@balticmaterials.de"
-__date__ = "2023/11/10"
+__date__ = "2023/11/22"
 __deprecated__ = False
 __license__ = "CC0 1.0 Universal"
 __maintainer__ = "Sven Nivera"
 __status__ = "DEVELOPMENT"
-__version__ = "0.1.3"
+__version__ = "0.1.4"
 __annotations__ = "https://docs.luxonis.com/projects/api/en/latest/samples/ColorCamera/rgb_camera_control/#rgb-camera-control", 
 "https://docs.luxonis.com/projects/api/en/latest/samples/VideoEncoder/rgb_full_resolution_saver/"
 
@@ -17,13 +17,16 @@ from pathlib import Path
 import cv2
 import depthai as dai
 
-# Create pipeline
 pipeline = dai.Pipeline()
 
 camRgb = pipeline.create(dai.node.ColorCamera)
-camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_48_MP)
+camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_5312X6000) # 5312, 6000
+# camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_4_K) # 3840 x 2160
 camRgb.setFps(10)
-camRgb.setNumFramesPool(2,2,2,1,1)
+# camRgb.setNumFramesPool(2,2,2,1,1)
+camRgb.setVideoNumFramesPool(1)
+camRgb.setStillNumFramesPool(1)
+print(camRgb.getStillSize())
 
 xoutRgb = pipeline.create(dai.node.XLinkOut)
 xoutRgb.setStreamName("rgb")
@@ -34,25 +37,26 @@ xin.setStreamName("control")
 xin.out.link(camRgb.inputControl)
 
 # Properties
-videoEnc = pipeline.create(dai.node.VideoEncoder)
-videoEnc.setDefaultProfilePreset(1, dai.VideoEncoderProperties.Profile.MJPEG)
-camRgb.still.link(videoEnc.input)
+# Encoder not needed: https://discuss.luxonis.com/d/967-oak-d-poe-pro-making-camera-send-image-only-when-i-need/5
+# videoEnc = pipeline.create(dai.node.VideoEncoder)
+# videoEnc.setDefaultProfilePreset(1, dai.VideoEncoderProperties.Profile.MJPEG)
+# camRgb.still.link(xoutStill)
 
 # Linking
 xoutStill = pipeline.create(dai.node.XLinkOut)
 xoutStill.setStreamName("still")
-videoEnc.bitstream.link(xoutStill.input)
+camRgb.still.link(xoutStill.input)
+# videoEnc.bitstream.link(xoutStill.input)
 
 # Connect to device and start pipeline
 with dai.Device(pipeline) as device:
-
     # Output queue will be used to get the rgb frames from the output defined above
-    qRgb = device.getOutputQueue(name="rgb", maxSize=30, blocking=False)
-    qStill = device.getOutputQueue(name="still", maxSize=30, blocking=True)
+    qRgb = device.getOutputQueue(name="rgb", maxSize=1, blocking=False)
+    qStill = device.getOutputQueue(name="still", maxSize=1, blocking=True)
     qControl = device.getInputQueue(name="control")
 
     # Make sure the destination path is present before starting to store the examples
-    dirName = "rgb_data"
+    dirName = "images"
     Path(dirName).mkdir(parents=True, exist_ok=True)
 
     while True:
@@ -62,12 +66,13 @@ with dai.Device(pipeline) as device:
             # 4k / 4
             frame = cv2.pyrDown(frame)
             frame = cv2.pyrDown(frame)
-            cv2.imshow("rgb", frame)
+            cv2.imshow("Real-Time Preview", frame)
 
         if qStill.has():
             fName = f"{dirName}/{int(time.time() * 1000)}.jpeg"
             with open(fName, "wb") as f:
-                f.write(qStill.get().getData())
+                img = qStill.get().getData()
+                f.write(img)
                 print('Image saved to', fName)
 
         key = cv2.waitKey(1)

@@ -16,17 +16,14 @@ import time
 from pathlib import Path
 import cv2
 import depthai as dai
+import numpy as np
 
 pipeline = dai.Pipeline()
 
 camRgb = pipeline.create(dai.node.ColorCamera)
-camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_5312X6000) # 5312, 6000
-# camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_4_K) # 3840 x 2160
+camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_5312X6000)
 camRgb.setFps(10)
-# camRgb.setNumFramesPool(2,2,2,1,1)
-camRgb.setVideoNumFramesPool(1)
-camRgb.setStillNumFramesPool(1)
-print(camRgb.getStillSize())
+camRgb.setNumFramesPool(2,2,2,1,1)
 
 xoutRgb = pipeline.create(dai.node.XLinkOut)
 xoutRgb.setStreamName("rgb")
@@ -36,17 +33,12 @@ xin = pipeline.create(dai.node.XLinkIn)
 xin.setStreamName("control")
 xin.out.link(camRgb.inputControl)
 
-# Properties
 # Encoder not needed: https://discuss.luxonis.com/d/967-oak-d-poe-pro-making-camera-send-image-only-when-i-need/5
-# videoEnc = pipeline.create(dai.node.VideoEncoder)
-# videoEnc.setDefaultProfilePreset(1, dai.VideoEncoderProperties.Profile.MJPEG)
-# camRgb.still.link(xoutStill)
 
 # Linking
 xoutStill = pipeline.create(dai.node.XLinkOut)
 xoutStill.setStreamName("still")
 camRgb.still.link(xoutStill.input)
-# videoEnc.bitstream.link(xoutStill.input)
 
 # Connect to device and start pipeline
 with dai.Device(pipeline) as device:
@@ -70,10 +62,9 @@ with dai.Device(pipeline) as device:
 
         if qStill.has():
             fName = f"{dirName}/{int(time.time() * 1000)}.jpeg"
-            with open(fName, "wb") as f:
-                img = qStill.get().getData()
-                f.write(img)
-                print('Image saved to', fName)
+            img = qStill.get().getCvFrame()            
+            cv2.imwrite(fName, img)            
+            print('Image saved to', fName)            
 
         key = cv2.waitKey(1)
         if key == ord('q'):

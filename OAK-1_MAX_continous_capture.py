@@ -96,7 +96,7 @@ with dai.Device(pipeline) as device:
 
     times = times / counter
     cap = cap / counter
-    f = open("myfile.txt", "a")
+    f = open("benchmark.txt", "a")
     f.write("Resolution: " + str(camRgb.getResolution()) + "\n")
     f.write("Format: " + format + "\n")
     f.write("For 100 images...")

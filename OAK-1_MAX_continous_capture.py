@@ -8,20 +8,26 @@ __deprecated__ = False
 __license__ = "CC0 1.0 Universal"
 __maintainer__ = "Sven Nivera"
 __status__ = "DEVELOPMENT"
-__version__ = "0.0.1"
-__annotations__ = ""
+__version__ = "0.1.1"
+__annotations__ = "Measuring performances"
 
 import depthai as dai
 import cv2
 import time
 from pathlib import Path
 
+format = ".tiff"
+
 pipeline = dai.Pipeline()
 
 camRgb = pipeline.create(dai.node.ColorCamera)
+
+# Possible Resolutions:
 camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_5312X6000)
+# camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_4000X3000)
 # camRgb.setResolution(dai.ColorCameraProperties.SensorResolution.THE_4_K)
-camRgb.setFps(10)
+
+# camRgb.setFps(10)
 camRgb.setNumFramesPool(2,2,2,1,1)
 
 xoutRgb = pipeline.create(dai.node.XLinkOut)
@@ -50,20 +56,23 @@ with dai.Device(pipeline) as device:
     first = True
     a = time.time()
     b = time.time()
+    counter = 1
+    times = 0
+    cap = 0
     while True:
         inRgb = qRgb.tryGet()  # Non-blocking call, will return a new data that has arrived or None otherwise
         if inRgb is not None and first:
             ctrl = dai.CameraControl()
             ctrl.setCaptureStill(True)
             qControl.send(ctrl)
-            first = False
-            
+            first = False            
         
         if qStill.has():
             print("------------------------------------------")
             print("Image in Queue...")
             print("Capturing needed: ", time.time() - a, "s")
-            fName = f"{dirName}/{int(time.time() * 1000)}.tiff"
+            cap += time.time() - a
+            fName = f"{dirName}/{int(time.time() * 1000)}" + format
             print("Retrieving image...")
             a = time.time()
             img = qStill.get().getCvFrame()
@@ -79,4 +88,19 @@ with dai.Device(pipeline) as device:
             print("Sent 'still' event to the camera...")
             a = time.time()
             print("Capture, retrieval and processing needed: ", time.time() - b,  "s")
+            times += time.time() - b
             b = time.time()
+
+            if counter == 100: break
+            counter += 1
+
+    times = times / counter
+    cap = cap / counter
+    f = open("myfile.txt", "a")
+    f.write("Resolution: " + str(camRgb.getResolution()) + "\n")
+    f.write("Format: " + format + "\n")
+    f.write("For 100 images...")
+    f.write("Time overall: " + times + "s\n")
+    f.write("Time for capture: " + cap + "s")
+    f.write("--------------------------------")
+    f.close()

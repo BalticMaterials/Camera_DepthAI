@@ -52,7 +52,7 @@ with dai.Device(pipeline) as device:
     qControl = device.getInputQueue(name="control")
 
     # Make sure the destination path is present before starting to store the examples
-    dirName = "images"
+    dirName = "on-demand"
     Path(dirName).mkdir(parents=True, exist_ok=True)
 
     while True:

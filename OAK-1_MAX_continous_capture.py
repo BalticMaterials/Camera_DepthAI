@@ -18,9 +18,8 @@ from pathlib import Path
 
 format = ".bmp"
 resolution = dai.ColorCameraProperties.SensorResolution.THE_5312X6000
-dirName = "continous_session" + str(time.time())
+dirName = "continous_session_" + str(time.time())
 Path(dirName).mkdir(parents=True, exist_ok=True)
-
 
 pipeline = dai.Pipeline()
 camRgb = pipeline.create(dai.node.ColorCamera)
